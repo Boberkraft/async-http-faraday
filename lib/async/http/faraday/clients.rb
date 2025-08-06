@@ -10,6 +10,8 @@ require "kernel/sync"
 require "async/http/client"
 require "async/http/proxy"
 
+::Thread.attr_accessor :async_http_faraday_per_thread_persistent_client
+
 module Async
 	module HTTP
 		module Faraday
@@ -177,10 +179,10 @@ module Async
 				# This will close all clients associated with all threads.
 				def close
 					Thread.list.each do |thread|
-						if clients = thread[@key]
+						if clients = thread.async_http_faraday_per_thread_persistent_client
 							clients.close
 							
-							thread[@key] = nil
+							thread.async_http_faraday_per_thread_persistent_client = nil
 						end
 					end
 				end
@@ -192,9 +194,7 @@ module Async
 				end
 				
 				def clients
-					thread = Thread.current
-					
-					return thread.thread_variable_get(@key) || thread.thread_variable_set(@key, make_clients)
+					Thread.current.async_http_faraday_per_thread_persistent_client ||= make_clients
 				end
 			end
 		end
